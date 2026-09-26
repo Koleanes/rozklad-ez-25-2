@@ -1,0 +1,943 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Календар пар ЕЗ-25-2</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #fbf8f2;
+      --panel: #fffdf8;
+      --ink: #2f3432;
+      --muted: #7b827f;
+      --line: #ece2d6;
+      --accent: #7fa99b;
+      --accent-dark: #4f756b;
+      --accent-2: #d7a97e;
+      --lecture: #e6f2ed;
+      --practice: #fff1dc;
+      --training: #efeafb;
+      --lesson: #e9f0fb;
+      --empty: #f4efe7;
+      --shadow: 0 10px 26px rgba(79, 94, 88, .08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+    }
+
+    body.modal-open {
+      overflow: hidden;
+    }
+
+    button, input, select { font: inherit; }
+
+    .app {
+      width: min(430px, calc(100% - 18px));
+      margin: 0 auto;
+      padding: 10px 0 22px;
+    }
+
+    .topbar {
+      display: grid;
+      gap: 9px;
+      margin-bottom: 10px;
+    }
+
+    .eyebrow {
+      margin: 0 0 3px;
+      color: var(--accent-dark);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.06;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .stat {
+      background: rgba(255,253,248,.9);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 7px;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 17px;
+      line-height: 1;
+    }
+
+    .stat span {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.15;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 7px;
+      align-items: center;
+      margin-bottom: 8px;
+      background: rgba(255,253,248,.92);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 7px;
+      box-shadow: var(--shadow);
+      position: sticky;
+      top: 6px;
+      z-index: 20;
+      backdrop-filter: blur(14px);
+    }
+
+    .nav-group, .view-group {
+      display: inline-flex;
+      gap: 5px;
+      align-items: center;
+    }
+
+    .nav-group {
+      justify-content: space-between;
+    }
+
+    .icon-btn, .text-btn, .chip {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      border-radius: 8px;
+      min-height: 32px;
+      padding: 0 9px;
+      cursor: pointer;
+      transition: transform .16s ease, border-color .16s ease, background .16s ease;
+    }
+
+    .icon-btn {
+      width: 32px;
+      padding: 0;
+      display: inline-grid;
+      place-items: center;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .text-btn:hover, .icon-btn:hover, .chip:hover {
+      transform: translateY(-1px);
+      border-color: rgba(37,107,93,.45);
+    }
+
+    .text-btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      font-weight: 800;
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .view-group .text-btn.active, .chip.active {
+      background: var(--accent-dark);
+      color: #fff;
+      border-color: var(--accent-dark);
+    }
+
+    .month-title {
+      min-width: 118px;
+      text-align: center;
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .search {
+      min-height: 34px;
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 10px;
+      background: var(--panel);
+      color: var(--ink);
+      grid-column: 1 / -1;
+    }
+
+    .filters {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 8px;
+      margin: 0 0 8px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 30px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .layout {
+      display: grid;
+      gap: 8px;
+      align-items: start;
+    }
+
+    .calendar-shell, .side-panel, .agenda-shell {
+      background: rgba(255,253,248,.94);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .weekday-row, .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+
+    .weekday {
+      padding: 7px 2px;
+      color: var(--muted);
+      font-weight: 800;
+      font-size: 10px;
+      text-align: center;
+      border-bottom: 1px solid var(--line);
+      background: #fffaf2;
+    }
+
+    .day-cell {
+      min-height: 58px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      padding: 4px;
+      background: var(--panel);
+      cursor: pointer;
+      position: relative;
+      transition: background .16s ease, box-shadow .16s ease;
+      text-align: left;
+    }
+
+    .day-cell:nth-child(7n) { border-right: 0; }
+
+    .day-cell:hover { background: #fffaf2; box-shadow: inset 0 0 0 2px rgba(127,169,155,.18); }
+    .day-cell.outside { background: #f7f2ea; color: #b6aaa0; }
+    .day-cell.selected { box-shadow: inset 0 0 0 2px var(--accent); }
+    .day-cell.today .date-num { background: var(--accent); color: #fff; }
+
+    .day-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .date-num {
+      width: 22px;
+      height: 22px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 999px;
+      font-weight: 900;
+      font-size: 12px;
+    }
+
+    .week-pill {
+      color: var(--muted);
+      font-size: 0;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 0;
+      width: 8px;
+      height: 8px;
+      white-space: nowrap;
+      background: var(--accent);
+      opacity: .55;
+    }
+
+    .event-mini {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin: 2px 2px 0 0;
+      border-radius: 999px;
+      padding: 0;
+      border-left: 0;
+      background: var(--lesson);
+      overflow: hidden;
+    }
+
+    .event-mini.Лекція { background: var(--lecture); }
+    .event-mini.Практика { background: var(--practice); }
+    .event-mini.Заняття { background: var(--lesson); }
+
+    .mini-time {
+      display: none;
+    }
+
+    .mini-title {
+      display: none;
+    }
+
+    .more {
+      color: var(--accent-dark);
+      font-weight: 800;
+      font-size: 10px;
+      margin-top: 2px;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      background: rgba(47, 52, 50, .24);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease;
+    }
+
+    body.modal-open .modal-backdrop {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .side-panel {
+      position: fixed;
+      left: max(9px, env(safe-area-inset-left));
+      right: max(9px, env(safe-area-inset-right));
+      bottom: max(9px, env(safe-area-inset-bottom));
+      z-index: 90;
+      max-height: min(78vh, 560px);
+      padding: 11px;
+      overflow: auto;
+      transform: translateY(calc(100% + 18px));
+      opacity: 0;
+      pointer-events: none;
+      transition: transform .2s ease, opacity .2s ease;
+    }
+
+    body.modal-open .side-panel {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .panel-header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .close-panel {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff8eb;
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .panel-date {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.15;
+    }
+
+    .panel-meta {
+      margin: 4px 0 9px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .day-range {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .range-box {
+      background: #fff8eb;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+    }
+
+    .range-box span {
+      color: var(--muted);
+      display: block;
+      font-size: 10px;
+    }
+
+    .range-box strong {
+      display: block;
+      margin-top: 2px;
+      font-size: 17px;
+    }
+
+    .lesson-list {
+      display: grid;
+      gap: 7px;
+    }
+
+    .lesson {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px;
+      background: var(--panel);
+    }
+
+    .lesson-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .pair {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      height: 24px;
+      border-radius: 999px;
+      background: var(--accent-dark);
+      color: #fff;
+      font-weight: 900;
+      font-size: 12px;
+    }
+
+    .time {
+      color: var(--accent-dark);
+      font-weight: 900;
+      white-space: nowrap;
+      font-size: 13px;
+    }
+
+    .lesson-title {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.25;
+    }
+
+    .lesson-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 7px;
+    }
+
+    .tag {
+      border-radius: 999px;
+      padding: 3px 7px;
+      background: #f1ece4;
+      color: #4f5a55;
+      font-size: 11px;
+      font-weight: 750;
+    }
+
+    .tag.lecture { background: var(--lecture); }
+    .tag.practice { background: var(--practice); }
+    .tag.note { background: var(--training); }
+
+    .empty-state {
+      min-height: 92px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      text-align: center;
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fffaf2;
+    }
+
+    .agenda-shell { display: none; }
+
+    .agenda-list {
+      display: grid;
+      gap: 0;
+    }
+
+    .agenda-day {
+      display: grid;
+      grid-template-columns: 170px 1fr;
+      gap: 16px;
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .agenda-date strong {
+      display: block;
+      font-size: 18px;
+    }
+
+    .agenda-date span {
+      display: block;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .agenda-events {
+      display: grid;
+      gap: 8px;
+    }
+
+    .agenda-card {
+      display: grid;
+      grid-template-columns: 96px 1fr auto;
+      gap: 12px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fbfcfa;
+    }
+
+    .hidden { display: none !important; }
+
+    @media (min-width: 760px) {
+      body.modal-open { overflow: auto; }
+      .app { width: min(980px, calc(100% - 28px)); }
+      .topbar {
+        grid-template-columns: 1fr 280px;
+        align-items: end;
+      }
+      .toolbar {
+        grid-template-columns: auto auto minmax(210px, 1fr) auto auto;
+      }
+      .search {
+        grid-column: auto;
+      }
+      .text-btn.primary {
+        grid-column: auto;
+        grid-row: auto;
+      }
+      .layout {
+        grid-template-columns: minmax(0, 1fr) 300px;
+        gap: 12px;
+      }
+      .day-cell { min-height: 78px; }
+      .modal-backdrop { display: none; }
+      .side-panel {
+        position: sticky;
+        top: 84px;
+        left: auto;
+        right: auto;
+        bottom: auto;
+        z-index: 1;
+        max-height: calc(100vh - 100px);
+        transform: none;
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .lesson-list {
+        max-height: calc(100vh - 245px);
+        overflow: auto;
+        padding-right: 2px;
+      }
+      .close-panel { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Розклад групи ЕЗ-25-2</p>
+        <h1>Календар пар</h1>
+        <p class="subtitle">Семестр 28.09.2026–26.12.2026</p>
+      </div>
+      <section class="summary" aria-label="Підсумок розкладу">
+        <div class="stat"><strong>65</strong><span>днів</span></div>
+        <div class="stat"><strong>158</strong><span>пар</span></div>
+        <div class="stat"><strong>6</strong><span>слотів</span></div>
+      </section>
+    </header>
+
+    <section class="toolbar" aria-label="Керування календарем">
+      <div class="nav-group">
+        <button class="icon-btn" id="prevMonth" type="button" title="Попередній місяць" aria-label="Попередній місяць">‹</button>
+        <div class="month-title" id="monthTitle"></div>
+        <button class="icon-btn" id="nextMonth" type="button" title="Наступний місяць" aria-label="Наступний місяць">›</button>
+      </div>
+      <button class="text-btn primary" id="nextLessonBtn" type="button">Найближча пара</button>
+      <input class="search" id="searchInput" type="search" placeholder="Пошук за предметом, видом або приміткою">
+      <div class="view-group" aria-label="Фільтр тижня">
+        <button class="text-btn active" type="button" data-week="all">Усі</button>
+        <button class="text-btn" type="button" data-week="Чисельник">Чис.</button>
+        <button class="text-btn" type="button" data-week="Знаменник">Знам.</button>
+      </div>
+      <button class="text-btn" id="resetBtn" type="button">Скинути</button>
+    </section>
+
+    <section class="filters" id="typeFilters" aria-label="Фільтр типу заняття"></section>
+
+    <section class="layout">
+      <section class="calendar-shell" aria-label="Місячний календар">
+        <div class="weekday-row">
+          <div class="weekday">Пн</div>
+          <div class="weekday">Вт</div>
+          <div class="weekday">Ср</div>
+          <div class="weekday">Чт</div>
+          <div class="weekday">Пт</div>
+          <div class="weekday">Сб</div>
+          <div class="weekday">Нд</div>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+      </section>
+
+      <div class="modal-backdrop" id="detailsBackdrop" aria-hidden="true"></div>
+
+      <aside class="side-panel" aria-label="Деталі дня">
+        <div class="panel-header">
+          <h2 class="panel-date" id="panelDate"></h2>
+          <button class="close-panel" id="closePanel" type="button" aria-label="Закрити деталі">×</button>
+        </div>
+        <p class="panel-meta" id="panelMeta"></p>
+        <div class="day-range" id="dayRange"></div>
+        <div class="lesson-list" id="lessonList"></div>
+      </aside>
+
+      <section class="agenda-shell" aria-label="Список занять">
+        <div class="agenda-list" id="agendaList"></div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const schedule = {"meta":{"group":"ЕЗ-25-2","semester":"28.09.2026–26.12.2026","source":"rozklad_EZ-25-2_zapovnenyi.xlsx","start":"2026-09-28","end":"2026-12-25","subjects":["Інноваційно-інвестиційний менеджмент в підприємництві","Іноземна мова (англійська)","Блокчейн-економіка: основи криптовалютного трейдингу","Міжнародний менеджмент","Нормативно-правове регулювання професійної діяльності","Основи національного спротиву / Цивільний захист та основи медичних знань","Планування і прогнозування розвитку бізнесу","Тренінг-курс «Формула успіху підприємця»","Фізичне виховання та здоровий спосіб життя"],"types":["Заняття","Лекція","Практика"],"totalEvents":158,"totalStudyDays":65},"events":[{"date":"2026-09-28","displayDate":"28.09.2026","day":"Понеділок","week":"Чисельник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Міжнародний менеджмент","type":"Лекція","note":"","startAt":"2026-09-28T08:00:00","endAt":"2026-09-28T09:25:00"},{"date":"2026-09-28","displayDate":"28.09.2026","day":"Понеділок","week":"Чисельник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Планування і прогнозування розвитку бізнесу","type":"Лекція","note":"","startAt":"2026-09-28T09:35:00","endAt":"2026-09-28T10:55:00"},{"date":"2026-09-28","displayDate":"28.09.2026","day":"Понеділок","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Міжнародний менеджмент","type":"Практика","note":"","startAt":"2026-09-28T11:10:00","endAt":"2026-09-28T12:30:00"},{"date":"2026-09-29","displayDate":"29.09.2026","day":"Вівторок","week":"Чисельник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Практика","note":"Твоя вибіркова","startAt":"2026-09-29T09:35:00","endAt":"2026-09-29T10:55:00"},{"date":"2026-09-29","displayDate":"29.09.2026","day":"Вівторок","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-09-29T11:10:00","endAt":"2026-09-29T12:30:00"},{"date":"2026-09-29","displayDate":"29.09.2026","day":"Вівторок","week":"Чисельник","pair":6,"time":"15:55–17:15","start":"15:55","end":"17:15","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Практика","note":"Твоя вибіркова","startAt":"2026-09-29T15:55:00","endAt":"2026-09-29T17:15:00"},{"date":"2026-09-30","displayDate":"30.09.2026","day":"Середа","week":"Чисельник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Фізичне виховання та здоровий спосіб життя","type":"Заняття","note":"","startAt":"2026-09-30T08:00:00","endAt":"2026-09-30T09:25:00"},{"date":"2026-09-30","displayDate":"30.09.2026","day":"Середа","week":"Чисельник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Нормативно-правове регулювання професійної діяльності","type":"Лекція","note":"","startAt":"2026-09-30T09:35:00","endAt":"2026-09-30T10:55:00"},{"date":"2026-09-30","displayDate":"30.09.2026","day":"Середа","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Інноваційно-інвестиційний менеджмент в підприємництві","type":"Лекція","note":"","startAt":"2026-09-30T11:10:00","endAt":"2026-09-30T12:30:00"},{"date":"2026-10-01","displayDate":"01.10.2026","day":"Четвер","week":"Чисельник","pair":4,"time":"12:45–14:05","start":"12:45","end":"14:05","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-10-01T12:45:00","endAt":"2026-10-01T14:05:00"},{"date":"2026-10-02","displayDate":"02.10.2026","day":"П’ятниця","week":"Чисельник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Іноземна мова (англійська)","type":"Практика","note":"","startAt":"2026-10-02T08:00:00","endAt":"2026-10-02T09:25:00"},{"date":"2026-10-02","displayDate":"02.10.2026","day":"П’ятниця","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Основи національного спротиву / Цивільний захист та основи медичних знань","type":"Заняття","note":"З 02.10.2026","startAt":"2026-10-02T11:10:00","endAt":"2026-10-02T12:30:00"},{"date":"2026-10-05","displayDate":"05.10.2026","day":"Понеділок","week":"Знаменник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Міжнародний менеджмент","type":"Лекція","note":"","startAt":"2026-10-05T08:00:00","endAt":"2026-10-05T09:25:00"},{"date":"2026-10-05","displayDate":"05.10.2026","day":"Понеділок","week":"Знаменник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Планування і прогнозування розвитку бізнесу","type":"Практика","note":"","startAt":"2026-10-05T11:10:00","endAt":"2026-10-05T12:30:00"},{"date":"2026-10-05","displayDate":"05.10.2026","day":"Понеділок","week":"Знаменник","pair":4,"time":"12:45–14:05","start":"12:45","end":"14:05","subject":"Міжнародний менеджмент","type":"Практика","note":"","startAt":"2026-10-05T12:45:00","endAt":"2026-10-05T14:05:00"},{"date":"2026-10-06","displayDate":"06.10.2026","day":"Вівторок","week":"Знаменник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Практика","note":"Твоя вибіркова","startAt":"2026-10-06T09:35:00","endAt":"2026-10-06T10:55:00"},{"date":"2026-10-06","displayDate":"06.10.2026","day":"Вівторок","week":"Знаменник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-10-06T11:10:00","endAt":"2026-10-06T12:30:00"},{"date":"2026-10-06","displayDate":"06.10.2026","day":"Вівторок","week":"Знаменник","pair":6,"time":"15:55–17:15","start":"15:55","end":"17:15","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Практика","note":"Твоя вибіркова","startAt":"2026-10-06T15:55:00","endAt":"2026-10-06T17:15:00"},{"date":"2026-10-07","displayDate":"07.10.2026","day":"Середа","week":"Знаменник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Фізичне виховання та здоровий спосіб життя","type":"Заняття","note":"","startAt":"2026-10-07T08:00:00","endAt":"2026-10-07T09:25:00"},{"date":"2026-10-07","displayDate":"07.10.2026","day":"Середа","week":"Знаменник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Інноваційно-інвестиційний менеджмент в підприємництві","type":"Практика","note":"","startAt":"2026-10-07T09:35:00","endAt":"2026-10-07T10:55:00"},{"date":"2026-10-08","displayDate":"08.10.2026","day":"Четвер","week":"Знаменник","pair":4,"time":"12:45–14:05","start":"12:45","end":"14:05","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-10-08T12:45:00","endAt":"2026-10-08T14:05:00"},{"date":"2026-10-09","displayDate":"09.10.2026","day":"П’ятниця","week":"Знаменник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Іноземна мова (англійська)","type":"Практика","note":"","startAt":"2026-10-09T08:00:00","endAt":"2026-10-09T09:25:00"},{"date":"2026-10-09","displayDate":"09.10.2026","day":"П’ятниця","week":"Знаменник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Нормативно-правове регулювання професійної діяльності","type":"Практика","note":"Знаменник; до 19.12.2026","startAt":"2026-10-09T09:35:00","endAt":"2026-10-09T10:55:00"},{"date":"2026-10-09","displayDate":"09.10.2026","day":"П’ятниця","week":"Знаменник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Основи національного спротиву / Цивільний захист та основи медичних знань","type":"Заняття","note":"З 02.10.2026","startAt":"2026-10-09T11:10:00","endAt":"2026-10-09T12:30:00"},{"date":"2026-10-12","displayDate":"12.10.2026","day":"Понеділок","week":"Чисельник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Міжнародний менеджмент","type":"Лекція","note":"","startAt":"2026-10-12T08:00:00","endAt":"2026-10-12T09:25:00"},{"date":"2026-10-12","displayDate":"12.10.2026","day":"Понеділок","week":"Чисельник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Планування і прогнозування розвитку бізнесу","type":"Лекція","note":"","startAt":"2026-10-12T09:35:00","endAt":"2026-10-12T10:55:00"},{"date":"2026-10-12","displayDate":"12.10.2026","day":"Понеділок","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Міжнародний менеджмент","type":"Практика","note":"","startAt":"2026-10-12T11:10:00","endAt":"2026-10-12T12:30:00"},{"date":"2026-10-13","displayDate":"13.10.2026","day":"Вівторок","week":"Чисельник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Практика","note":"Твоя вибіркова","startAt":"2026-10-13T09:35:00","endAt":"2026-10-13T10:55:00"},{"date":"2026-10-13","displayDate":"13.10.2026","day":"Вівторок","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-10-13T11:10:00","endAt":"2026-10-13T12:30:00"},{"date":"2026-10-13","displayDate":"13.10.2026","day":"Вівторок","week":"Чисельник","pair":6,"time":"15:55–17:15","start":"15:55","end":"17:15","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Практика","note":"Твоя вибіркова","startAt":"2026-10-13T15:55:00","endAt":"2026-10-13T17:15:00"},{"date":"2026-10-14","displayDate":"14.10.2026","day":"Середа","week":"Чисельник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Фізичне виховання та здоровий спосіб життя","type":"Заняття","note":"","startAt":"2026-10-14T08:00:00","endAt":"2026-10-14T09:25:00"},{"date":"2026-10-14","displayDate":"14.10.2026","day":"Середа","week":"Чисельник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Нормативно-правове регулювання професійної діяльності","type":"Лекція","note":"","startAt":"2026-10-14T09:35:00","endAt":"2026-10-14T10:55:00"},{"date":"2026-10-14","displayDate":"14.10.2026","day":"Середа","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Інноваційно-інвестиційний менеджмент в підприємництві","type":"Лекція","note":"","startAt":"2026-10-14T11:10:00","endAt":"2026-10-14T12:30:00"},{"date":"2026-10-15","displayDate":"15.10.2026","day":"Четвер","week":"Чисельник","pair":4,"time":"12:45–14:05","start":"12:45","end":"14:05","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-10-15T12:45:00","endAt":"2026-10-15T14:05:00"},{"date":"2026-10-16","displayDate":"16.10.2026","day":"П’ятниця","week":"Чисельник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Іноземна мова (англійська)","type":"Практика","note":"","startAt":"2026-10-16T08:00:00","endAt":"2026-10-16T09:25:00"},{"date":"2026-10-16","displayDate":"16.10.2026","day":"П’ятниця","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Основи національного спротиву / Цивільний захист та основи медичних знань","type":"Заняття","note":"З 02.10.2026","startAt":"2026-10-16T11:10:00","endAt":"2026-10-16T12:30:00"},{"date":"2026-10-19","displayDate":"19.10.2026","day":"Понеділок","week":"Знаменник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Міжнародний менеджмент","type":"Лекція","note":"","startAt":"2026-10-19T08:00:00","endAt":"2026-10-19T09:25:00"},{"date":"2026-10-19","displayDate":"19.10.2026","day":"Понеділок","week":"Знаменник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Планування і прогнозування розвитку бізнесу","type":"Практика","note":"","startAt":"2026-10-19T11:10:00","endAt":"2026-10-19T12:30:00"},{"date":"2026-10-19","displayDate":"19.10.2026","day":"Понеділок","week":"Знаменник","pair":4,"time":"12:45–14:05","start":"12:45","end":"14:05","subject":"Міжнародний менеджмент","type":"Практика","note":"","startAt":"2026-10-19T12:45:00","endAt":"2026-10-19T14:05:00"},{"date":"2026-10-20","displayDate":"20.10.2026","day":"Вівторок","week":"Знаменник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Практика","note":"Твоя вибіркова","startAt":"2026-10-20T09:35:00","endAt":"2026-10-20T10:55:00"},{"date":"2026-10-20","displayDate":"20.10.2026","day":"Вівторок","week":"Знаменник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-10-20T11:10:00","endAt":"2026-10-20T12:30:00"},{"date":"2026-10-20","displayDate":"20.10.2026","day":"Вівторок","week":"Знаменник","pair":6,"time":"15:55–17:15","start":"15:55","end":"17:15","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Практика","note":"Твоя вибіркова","startAt":"2026-10-20T15:55:00","endAt":"2026-10-20T17:15:00"},{"date":"2026-10-21","displayDate":"21.10.2026","day":"Середа","week":"Знаменник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Фізичне виховання та здоровий спосіб життя","type":"Заняття","note":"","startAt":"2026-10-21T08:00:00","endAt":"2026-10-21T09:25:00"},{"date":"2026-10-21","displayDate":"21.10.2026","day":"Середа","week":"Знаменник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Інноваційно-інвестиційний менеджмент в підприємництві","type":"Практика","note":"","startAt":"2026-10-21T09:35:00","endAt":"2026-10-21T10:55:00"},{"date":"2026-10-22","displayDate":"22.10.2026","day":"Четвер","week":"Знаменник","pair":4,"time":"12:45–14:05","start":"12:45","end":"14:05","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-10-22T12:45:00","endAt":"2026-10-22T14:05:00"},{"date":"2026-10-23","displayDate":"23.10.2026","day":"П’ятниця","week":"Знаменник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Іноземна мова (англійська)","type":"Практика","note":"","startAt":"2026-10-23T08:00:00","endAt":"2026-10-23T09:25:00"},{"date":"2026-10-23","displayDate":"23.10.2026","day":"П’ятниця","week":"Знаменник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Нормативно-правове регулювання професійної діяльності","type":"Практика","note":"Знаменник; до 19.12.2026","startAt":"2026-10-23T09:35:00","endAt":"2026-10-23T10:55:00"},{"date":"2026-10-23","displayDate":"23.10.2026","day":"П’ятниця","week":"Знаменник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Основи національного спротиву / Цивільний захист та основи медичних знань","type":"Заняття","note":"З 02.10.2026","startAt":"2026-10-23T11:10:00","endAt":"2026-10-23T12:30:00"},{"date":"2026-10-26","displayDate":"26.10.2026","day":"Понеділок","week":"Чисельник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Міжнародний менеджмент","type":"Лекція","note":"","startAt":"2026-10-26T08:00:00","endAt":"2026-10-26T09:25:00"},{"date":"2026-10-26","displayDate":"26.10.2026","day":"Понеділок","week":"Чисельник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Планування і прогнозування розвитку бізнесу","type":"Лекція","note":"","startAt":"2026-10-26T09:35:00","endAt":"2026-10-26T10:55:00"},{"date":"2026-10-26","displayDate":"26.10.2026","day":"Понеділок","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Міжнародний менеджмент","type":"Практика","note":"","startAt":"2026-10-26T11:10:00","endAt":"2026-10-26T12:30:00"},{"date":"2026-10-27","displayDate":"27.10.2026","day":"Вівторок","week":"Чисельник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Практика","note":"Твоя вибіркова","startAt":"2026-10-27T09:35:00","endAt":"2026-10-27T10:55:00"},{"date":"2026-10-27","displayDate":"27.10.2026","day":"Вівторок","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-10-27T11:10:00","endAt":"2026-10-27T12:30:00"},{"date":"2026-10-27","displayDate":"27.10.2026","day":"Вівторок","week":"Чисельник","pair":6,"time":"15:55–17:15","start":"15:55","end":"17:15","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Практика","note":"Твоя вибіркова","startAt":"2026-10-27T15:55:00","endAt":"2026-10-27T17:15:00"},{"date":"2026-10-28","displayDate":"28.10.2026","day":"Середа","week":"Чисельник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Фізичне виховання та здоровий спосіб життя","type":"Заняття","note":"","startAt":"2026-10-28T08:00:00","endAt":"2026-10-28T09:25:00"},{"date":"2026-10-28","displayDate":"28.10.2026","day":"Середа","week":"Чисельник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Нормативно-правове регулювання професійної діяльності","type":"Лекція","note":"","startAt":"2026-10-28T09:35:00","endAt":"2026-10-28T10:55:00"},{"date":"2026-10-28","displayDate":"28.10.2026","day":"Середа","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Інноваційно-інвестиційний менеджмент в підприємництві","type":"Лекція","note":"","startAt":"2026-10-28T11:10:00","endAt":"2026-10-28T12:30:00"},{"date":"2026-10-28","displayDate":"28.10.2026","day":"Середа","week":"Чисельник","pair":4,"time":"12:45–14:05","start":"12:45","end":"14:05","subject":"Планування і прогнозування розвитку бізнесу","type":"Лекція","note":"Разове заняття 28.10.2026","startAt":"2026-10-28T12:45:00","endAt":"2026-10-28T14:05:00"},{"date":"2026-10-29","displayDate":"29.10.2026","day":"Четвер","week":"Чисельник","pair":4,"time":"12:45–14:05","start":"12:45","end":"14:05","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-10-29T12:45:00","endAt":"2026-10-29T14:05:00"},{"date":"2026-10-30","displayDate":"30.10.2026","day":"П’ятниця","week":"Чисельник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Іноземна мова (англійська)","type":"Практика","note":"","startAt":"2026-10-30T08:00:00","endAt":"2026-10-30T09:25:00"},{"date":"2026-10-30","displayDate":"30.10.2026","day":"П’ятниця","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Основи національного спротиву / Цивільний захист та основи медичних знань","type":"Заняття","note":"З 02.10.2026","startAt":"2026-10-30T11:10:00","endAt":"2026-10-30T12:30:00"},{"date":"2026-11-02","displayDate":"02.11.2026","day":"Понеділок","week":"Знаменник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Міжнародний менеджмент","type":"Лекція","note":"","startAt":"2026-11-02T08:00:00","endAt":"2026-11-02T09:25:00"},{"date":"2026-11-02","displayDate":"02.11.2026","day":"Понеділок","week":"Знаменник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Планування і прогнозування розвитку бізнесу","type":"Практика","note":"","startAt":"2026-11-02T11:10:00","endAt":"2026-11-02T12:30:00"},{"date":"2026-11-02","displayDate":"02.11.2026","day":"Понеділок","week":"Знаменник","pair":4,"time":"12:45–14:05","start":"12:45","end":"14:05","subject":"Міжнародний менеджмент","type":"Практика","note":"","startAt":"2026-11-02T12:45:00","endAt":"2026-11-02T14:05:00"},{"date":"2026-11-03","displayDate":"03.11.2026","day":"Вівторок","week":"Знаменник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Практика","note":"Твоя вибіркова","startAt":"2026-11-03T09:35:00","endAt":"2026-11-03T10:55:00"},{"date":"2026-11-03","displayDate":"03.11.2026","day":"Вівторок","week":"Знаменник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-11-03T11:10:00","endAt":"2026-11-03T12:30:00"},{"date":"2026-11-03","displayDate":"03.11.2026","day":"Вівторок","week":"Знаменник","pair":6,"time":"15:55–17:15","start":"15:55","end":"17:15","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Практика","note":"Твоя вибіркова","startAt":"2026-11-03T15:55:00","endAt":"2026-11-03T17:15:00"},{"date":"2026-11-04","displayDate":"04.11.2026","day":"Середа","week":"Знаменник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Фізичне виховання та здоровий спосіб життя","type":"Заняття","note":"","startAt":"2026-11-04T08:00:00","endAt":"2026-11-04T09:25:00"},{"date":"2026-11-04","displayDate":"04.11.2026","day":"Середа","week":"Знаменник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Інноваційно-інвестиційний менеджмент в підприємництві","type":"Практика","note":"","startAt":"2026-11-04T09:35:00","endAt":"2026-11-04T10:55:00"},{"date":"2026-11-05","displayDate":"05.11.2026","day":"Четвер","week":"Знаменник","pair":4,"time":"12:45–14:05","start":"12:45","end":"14:05","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-11-05T12:45:00","endAt":"2026-11-05T14:05:00"},{"date":"2026-11-06","displayDate":"06.11.2026","day":"П’ятниця","week":"Знаменник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Іноземна мова (англійська)","type":"Практика","note":"","startAt":"2026-11-06T08:00:00","endAt":"2026-11-06T09:25:00"},{"date":"2026-11-06","displayDate":"06.11.2026","day":"П’ятниця","week":"Знаменник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Нормативно-правове регулювання професійної діяльності","type":"Практика","note":"Знаменник; до 19.12.2026","startAt":"2026-11-06T09:35:00","endAt":"2026-11-06T10:55:00"},{"date":"2026-11-06","displayDate":"06.11.2026","day":"П’ятниця","week":"Знаменник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Основи національного спротиву / Цивільний захист та основи медичних знань","type":"Заняття","note":"З 02.10.2026","startAt":"2026-11-06T11:10:00","endAt":"2026-11-06T12:30:00"},{"date":"2026-11-09","displayDate":"09.11.2026","day":"Понеділок","week":"Чисельник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Міжнародний менеджмент","type":"Лекція","note":"","startAt":"2026-11-09T08:00:00","endAt":"2026-11-09T09:25:00"},{"date":"2026-11-09","displayDate":"09.11.2026","day":"Понеділок","week":"Чисельник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Планування і прогнозування розвитку бізнесу","type":"Лекція","note":"","startAt":"2026-11-09T09:35:00","endAt":"2026-11-09T10:55:00"},{"date":"2026-11-09","displayDate":"09.11.2026","day":"Понеділок","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Міжнародний менеджмент","type":"Практика","note":"","startAt":"2026-11-09T11:10:00","endAt":"2026-11-09T12:30:00"},{"date":"2026-11-10","displayDate":"10.11.2026","day":"Вівторок","week":"Чисельник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Практика","note":"Твоя вибіркова","startAt":"2026-11-10T09:35:00","endAt":"2026-11-10T10:55:00"},{"date":"2026-11-10","displayDate":"10.11.2026","day":"Вівторок","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-11-10T11:10:00","endAt":"2026-11-10T12:30:00"},{"date":"2026-11-10","displayDate":"10.11.2026","day":"Вівторок","week":"Чисельник","pair":6,"time":"15:55–17:15","start":"15:55","end":"17:15","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Практика","note":"Твоя вибіркова","startAt":"2026-11-10T15:55:00","endAt":"2026-11-10T17:15:00"},{"date":"2026-11-11","displayDate":"11.11.2026","day":"Середа","week":"Чисельник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Фізичне виховання та здоровий спосіб життя","type":"Заняття","note":"","startAt":"2026-11-11T08:00:00","endAt":"2026-11-11T09:25:00"},{"date":"2026-11-11","displayDate":"11.11.2026","day":"Середа","week":"Чисельник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Нормативно-правове регулювання професійної діяльності","type":"Лекція","note":"","startAt":"2026-11-11T09:35:00","endAt":"2026-11-11T10:55:00"},{"date":"2026-11-11","displayDate":"11.11.2026","day":"Середа","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Інноваційно-інвестиційний менеджмент в підприємництві","type":"Лекція","note":"","startAt":"2026-11-11T11:10:00","endAt":"2026-11-11T12:30:00"},{"date":"2026-11-12","displayDate":"12.11.2026","day":"Четвер","week":"Чисельник","pair":4,"time":"12:45–14:05","start":"12:45","end":"14:05","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-11-12T12:45:00","endAt":"2026-11-12T14:05:00"},{"date":"2026-11-13","displayDate":"13.11.2026","day":"П’ятниця","week":"Чисельник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Іноземна мова (англійська)","type":"Практика","note":"","startAt":"2026-11-13T08:00:00","endAt":"2026-11-13T09:25:00"},{"date":"2026-11-13","displayDate":"13.11.2026","day":"П’ятниця","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Основи національного спротиву / Цивільний захист та основи медичних знань","type":"Заняття","note":"З 02.10.2026","startAt":"2026-11-13T11:10:00","endAt":"2026-11-13T12:30:00"},{"date":"2026-11-16","displayDate":"16.11.2026","day":"Понеділок","week":"Знаменник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Міжнародний менеджмент","type":"Лекція","note":"","startAt":"2026-11-16T08:00:00","endAt":"2026-11-16T09:25:00"},{"date":"2026-11-16","displayDate":"16.11.2026","day":"Понеділок","week":"Знаменник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Планування і прогнозування розвитку бізнесу","type":"Практика","note":"","startAt":"2026-11-16T11:10:00","endAt":"2026-11-16T12:30:00"},{"date":"2026-11-16","displayDate":"16.11.2026","day":"Понеділок","week":"Знаменник","pair":4,"time":"12:45–14:05","start":"12:45","end":"14:05","subject":"Міжнародний менеджмент","type":"Практика","note":"","startAt":"2026-11-16T12:45:00","endAt":"2026-11-16T14:05:00"},{"date":"2026-11-17","displayDate":"17.11.2026","day":"Вівторок","week":"Знаменник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Практика","note":"Твоя вибіркова","startAt":"2026-11-17T09:35:00","endAt":"2026-11-17T10:55:00"},{"date":"2026-11-17","displayDate":"17.11.2026","day":"Вівторок","week":"Знаменник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-11-17T11:10:00","endAt":"2026-11-17T12:30:00"},{"date":"2026-11-17","displayDate":"17.11.2026","day":"Вівторок","week":"Знаменник","pair":6,"time":"15:55–17:15","start":"15:55","end":"17:15","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Практика","note":"Твоя вибіркова","startAt":"2026-11-17T15:55:00","endAt":"2026-11-17T17:15:00"},{"date":"2026-11-18","displayDate":"18.11.2026","day":"Середа","week":"Знаменник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Фізичне виховання та здоровий спосіб життя","type":"Заняття","note":"","startAt":"2026-11-18T08:00:00","endAt":"2026-11-18T09:25:00"},{"date":"2026-11-18","displayDate":"18.11.2026","day":"Середа","week":"Знаменник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Інноваційно-інвестиційний менеджмент в підприємництві","type":"Практика","note":"","startAt":"2026-11-18T09:35:00","endAt":"2026-11-18T10:55:00"},{"date":"2026-11-18","displayDate":"18.11.2026","day":"Середа","week":"Знаменник","pair":4,"time":"12:45–14:05","start":"12:45","end":"14:05","subject":"Планування і прогнозування розвитку бізнесу","type":"Практика","note":"Разове заняття 18.11.2026","startAt":"2026-11-18T12:45:00","endAt":"2026-11-18T14:05:00"},{"date":"2026-11-19","displayDate":"19.11.2026","day":"Четвер","week":"Знаменник","pair":4,"time":"12:45–14:05","start":"12:45","end":"14:05","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-11-19T12:45:00","endAt":"2026-11-19T14:05:00"},{"date":"2026-11-20","displayDate":"20.11.2026","day":"П’ятниця","week":"Знаменник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Іноземна мова (англійська)","type":"Практика","note":"","startAt":"2026-11-20T08:00:00","endAt":"2026-11-20T09:25:00"},{"date":"2026-11-20","displayDate":"20.11.2026","day":"П’ятниця","week":"Знаменник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Нормативно-правове регулювання професійної діяльності","type":"Практика","note":"Знаменник; до 19.12.2026","startAt":"2026-11-20T09:35:00","endAt":"2026-11-20T10:55:00"},{"date":"2026-11-20","displayDate":"20.11.2026","day":"П’ятниця","week":"Знаменник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Основи національного спротиву / Цивільний захист та основи медичних знань","type":"Заняття","note":"З 02.10.2026","startAt":"2026-11-20T11:10:00","endAt":"2026-11-20T12:30:00"},{"date":"2026-11-23","displayDate":"23.11.2026","day":"Понеділок","week":"Чисельник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Міжнародний менеджмент","type":"Лекція","note":"","startAt":"2026-11-23T08:00:00","endAt":"2026-11-23T09:25:00"},{"date":"2026-11-23","displayDate":"23.11.2026","day":"Понеділок","week":"Чисельник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Планування і прогнозування розвитку бізнесу","type":"Лекція","note":"","startAt":"2026-11-23T09:35:00","endAt":"2026-11-23T10:55:00"},{"date":"2026-11-23","displayDate":"23.11.2026","day":"Понеділок","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Міжнародний менеджмент","type":"Практика","note":"","startAt":"2026-11-23T11:10:00","endAt":"2026-11-23T12:30:00"},{"date":"2026-11-24","displayDate":"24.11.2026","day":"Вівторок","week":"Чисельник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Практика","note":"Твоя вибіркова","startAt":"2026-11-24T09:35:00","endAt":"2026-11-24T10:55:00"},{"date":"2026-11-24","displayDate":"24.11.2026","day":"Вівторок","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-11-24T11:10:00","endAt":"2026-11-24T12:30:00"},{"date":"2026-11-24","displayDate":"24.11.2026","day":"Вівторок","week":"Чисельник","pair":6,"time":"15:55–17:15","start":"15:55","end":"17:15","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Практика","note":"Твоя вибіркова","startAt":"2026-11-24T15:55:00","endAt":"2026-11-24T17:15:00"},{"date":"2026-11-25","displayDate":"25.11.2026","day":"Середа","week":"Чисельник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Фізичне виховання та здоровий спосіб життя","type":"Заняття","note":"","startAt":"2026-11-25T08:00:00","endAt":"2026-11-25T09:25:00"},{"date":"2026-11-25","displayDate":"25.11.2026","day":"Середа","week":"Чисельник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Нормативно-правове регулювання професійної діяльності","type":"Лекція","note":"","startAt":"2026-11-25T09:35:00","endAt":"2026-11-25T10:55:00"},{"date":"2026-11-25","displayDate":"25.11.2026","day":"Середа","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Інноваційно-інвестиційний менеджмент в підприємництві","type":"Лекція","note":"","startAt":"2026-11-25T11:10:00","endAt":"2026-11-25T12:30:00"},{"date":"2026-11-26","displayDate":"26.11.2026","day":"Четвер","week":"Чисельник","pair":4,"time":"12:45–14:05","start":"12:45","end":"14:05","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-11-26T12:45:00","endAt":"2026-11-26T14:05:00"},{"date":"2026-11-27","displayDate":"27.11.2026","day":"П’ятниця","week":"Чисельник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Іноземна мова (англійська)","type":"Практика","note":"","startAt":"2026-11-27T08:00:00","endAt":"2026-11-27T09:25:00"},{"date":"2026-11-27","displayDate":"27.11.2026","day":"П’ятниця","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Основи національного спротиву / Цивільний захист та основи медичних знань","type":"Заняття","note":"З 02.10.2026","startAt":"2026-11-27T11:10:00","endAt":"2026-11-27T12:30:00"},{"date":"2026-11-30","displayDate":"30.11.2026","day":"Понеділок","week":"Знаменник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Міжнародний менеджмент","type":"Лекція","note":"","startAt":"2026-11-30T08:00:00","endAt":"2026-11-30T09:25:00"},{"date":"2026-11-30","displayDate":"30.11.2026","day":"Понеділок","week":"Знаменник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Планування і прогнозування розвитку бізнесу","type":"Практика","note":"","startAt":"2026-11-30T11:10:00","endAt":"2026-11-30T12:30:00"},{"date":"2026-11-30","displayDate":"30.11.2026","day":"Понеділок","week":"Знаменник","pair":4,"time":"12:45–14:05","start":"12:45","end":"14:05","subject":"Міжнародний менеджмент","type":"Практика","note":"","startAt":"2026-11-30T12:45:00","endAt":"2026-11-30T14:05:00"},{"date":"2026-12-01","displayDate":"01.12.2026","day":"Вівторок","week":"Знаменник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Практика","note":"Твоя вибіркова","startAt":"2026-12-01T09:35:00","endAt":"2026-12-01T10:55:00"},{"date":"2026-12-01","displayDate":"01.12.2026","day":"Вівторок","week":"Знаменник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-12-01T11:10:00","endAt":"2026-12-01T12:30:00"},{"date":"2026-12-01","displayDate":"01.12.2026","day":"Вівторок","week":"Знаменник","pair":6,"time":"15:55–17:15","start":"15:55","end":"17:15","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Практика","note":"Твоя вибіркова","startAt":"2026-12-01T15:55:00","endAt":"2026-12-01T17:15:00"},{"date":"2026-12-02","displayDate":"02.12.2026","day":"Середа","week":"Знаменник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Фізичне виховання та здоровий спосіб життя","type":"Заняття","note":"","startAt":"2026-12-02T08:00:00","endAt":"2026-12-02T09:25:00"},{"date":"2026-12-02","displayDate":"02.12.2026","day":"Середа","week":"Знаменник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Інноваційно-інвестиційний менеджмент в підприємництві","type":"Практика","note":"","startAt":"2026-12-02T09:35:00","endAt":"2026-12-02T10:55:00"},{"date":"2026-12-03","displayDate":"03.12.2026","day":"Четвер","week":"Знаменник","pair":4,"time":"12:45–14:05","start":"12:45","end":"14:05","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-12-03T12:45:00","endAt":"2026-12-03T14:05:00"},{"date":"2026-12-04","displayDate":"04.12.2026","day":"П’ятниця","week":"Знаменник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Іноземна мова (англійська)","type":"Практика","note":"","startAt":"2026-12-04T08:00:00","endAt":"2026-12-04T09:25:00"},{"date":"2026-12-04","displayDate":"04.12.2026","day":"П’ятниця","week":"Знаменник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Нормативно-правове регулювання професійної діяльності","type":"Практика","note":"Знаменник; до 19.12.2026","startAt":"2026-12-04T09:35:00","endAt":"2026-12-04T10:55:00"},{"date":"2026-12-04","displayDate":"04.12.2026","day":"П’ятниця","week":"Знаменник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Основи національного спротиву / Цивільний захист та основи медичних знань","type":"Заняття","note":"З 02.10.2026","startAt":"2026-12-04T11:10:00","endAt":"2026-12-04T12:30:00"},{"date":"2026-12-07","displayDate":"07.12.2026","day":"Понеділок","week":"Чисельник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Міжнародний менеджмент","type":"Лекція","note":"","startAt":"2026-12-07T08:00:00","endAt":"2026-12-07T09:25:00"},{"date":"2026-12-07","displayDate":"07.12.2026","day":"Понеділок","week":"Чисельник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Планування і прогнозування розвитку бізнесу","type":"Лекція","note":"","startAt":"2026-12-07T09:35:00","endAt":"2026-12-07T10:55:00"},{"date":"2026-12-07","displayDate":"07.12.2026","day":"Понеділок","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Міжнародний менеджмент","type":"Практика","note":"","startAt":"2026-12-07T11:10:00","endAt":"2026-12-07T12:30:00"},{"date":"2026-12-08","displayDate":"08.12.2026","day":"Вівторок","week":"Чисельник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Практика","note":"Твоя вибіркова","startAt":"2026-12-08T09:35:00","endAt":"2026-12-08T10:55:00"},{"date":"2026-12-08","displayDate":"08.12.2026","day":"Вівторок","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-12-08T11:10:00","endAt":"2026-12-08T12:30:00"},{"date":"2026-12-08","displayDate":"08.12.2026","day":"Вівторок","week":"Чисельник","pair":6,"time":"15:55–17:15","start":"15:55","end":"17:15","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Практика","note":"Твоя вибіркова","startAt":"2026-12-08T15:55:00","endAt":"2026-12-08T17:15:00"},{"date":"2026-12-09","displayDate":"09.12.2026","day":"Середа","week":"Чисельник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Фізичне виховання та здоровий спосіб життя","type":"Заняття","note":"","startAt":"2026-12-09T08:00:00","endAt":"2026-12-09T09:25:00"},{"date":"2026-12-09","displayDate":"09.12.2026","day":"Середа","week":"Чисельник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Нормативно-правове регулювання професійної діяльності","type":"Лекція","note":"","startAt":"2026-12-09T09:35:00","endAt":"2026-12-09T10:55:00"},{"date":"2026-12-09","displayDate":"09.12.2026","day":"Середа","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Інноваційно-інвестиційний менеджмент в підприємництві","type":"Лекція","note":"","startAt":"2026-12-09T11:10:00","endAt":"2026-12-09T12:30:00"},{"date":"2026-12-10","displayDate":"10.12.2026","day":"Четвер","week":"Чисельник","pair":4,"time":"12:45–14:05","start":"12:45","end":"14:05","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-12-10T12:45:00","endAt":"2026-12-10T14:05:00"},{"date":"2026-12-11","displayDate":"11.12.2026","day":"П’ятниця","week":"Чисельник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Іноземна мова (англійська)","type":"Практика","note":"","startAt":"2026-12-11T08:00:00","endAt":"2026-12-11T09:25:00"},{"date":"2026-12-11","displayDate":"11.12.2026","day":"П’ятниця","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Основи національного спротиву / Цивільний захист та основи медичних знань","type":"Заняття","note":"З 02.10.2026","startAt":"2026-12-11T11:10:00","endAt":"2026-12-11T12:30:00"},{"date":"2026-12-14","displayDate":"14.12.2026","day":"Понеділок","week":"Знаменник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Міжнародний менеджмент","type":"Лекція","note":"","startAt":"2026-12-14T08:00:00","endAt":"2026-12-14T09:25:00"},{"date":"2026-12-14","displayDate":"14.12.2026","day":"Понеділок","week":"Знаменник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Планування і прогнозування розвитку бізнесу","type":"Практика","note":"","startAt":"2026-12-14T11:10:00","endAt":"2026-12-14T12:30:00"},{"date":"2026-12-14","displayDate":"14.12.2026","day":"Понеділок","week":"Знаменник","pair":4,"time":"12:45–14:05","start":"12:45","end":"14:05","subject":"Міжнародний менеджмент","type":"Практика","note":"","startAt":"2026-12-14T12:45:00","endAt":"2026-12-14T14:05:00"},{"date":"2026-12-15","displayDate":"15.12.2026","day":"Вівторок","week":"Знаменник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Практика","note":"Твоя вибіркова","startAt":"2026-12-15T09:35:00","endAt":"2026-12-15T10:55:00"},{"date":"2026-12-15","displayDate":"15.12.2026","day":"Вівторок","week":"Знаменник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-12-15T11:10:00","endAt":"2026-12-15T12:30:00"},{"date":"2026-12-15","displayDate":"15.12.2026","day":"Вівторок","week":"Знаменник","pair":6,"time":"15:55–17:15","start":"15:55","end":"17:15","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Практика","note":"Твоя вибіркова","startAt":"2026-12-15T15:55:00","endAt":"2026-12-15T17:15:00"},{"date":"2026-12-16","displayDate":"16.12.2026","day":"Середа","week":"Знаменник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Фізичне виховання та здоровий спосіб життя","type":"Заняття","note":"","startAt":"2026-12-16T08:00:00","endAt":"2026-12-16T09:25:00"},{"date":"2026-12-16","displayDate":"16.12.2026","day":"Середа","week":"Знаменник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Інноваційно-інвестиційний менеджмент в підприємництві","type":"Практика","note":"","startAt":"2026-12-16T09:35:00","endAt":"2026-12-16T10:55:00"},{"date":"2026-12-17","displayDate":"17.12.2026","day":"Четвер","week":"Знаменник","pair":4,"time":"12:45–14:05","start":"12:45","end":"14:05","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-12-17T12:45:00","endAt":"2026-12-17T14:05:00"},{"date":"2026-12-18","displayDate":"18.12.2026","day":"П’ятниця","week":"Знаменник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Іноземна мова (англійська)","type":"Практика","note":"","startAt":"2026-12-18T08:00:00","endAt":"2026-12-18T09:25:00"},{"date":"2026-12-18","displayDate":"18.12.2026","day":"П’ятниця","week":"Знаменник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Нормативно-правове регулювання професійної діяльності","type":"Практика","note":"Знаменник; до 19.12.2026","startAt":"2026-12-18T09:35:00","endAt":"2026-12-18T10:55:00"},{"date":"2026-12-18","displayDate":"18.12.2026","day":"П’ятниця","week":"Знаменник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Основи національного спротиву / Цивільний захист та основи медичних знань","type":"Заняття","note":"З 02.10.2026","startAt":"2026-12-18T11:10:00","endAt":"2026-12-18T12:30:00"},{"date":"2026-12-21","displayDate":"21.12.2026","day":"Понеділок","week":"Чисельник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Міжнародний менеджмент","type":"Лекція","note":"","startAt":"2026-12-21T08:00:00","endAt":"2026-12-21T09:25:00"},{"date":"2026-12-21","displayDate":"21.12.2026","day":"Понеділок","week":"Чисельник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Планування і прогнозування розвитку бізнесу","type":"Лекція","note":"","startAt":"2026-12-21T09:35:00","endAt":"2026-12-21T10:55:00"},{"date":"2026-12-21","displayDate":"21.12.2026","day":"Понеділок","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Міжнародний менеджмент","type":"Практика","note":"","startAt":"2026-12-21T11:10:00","endAt":"2026-12-21T12:30:00"},{"date":"2026-12-22","displayDate":"22.12.2026","day":"Вівторок","week":"Чисельник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Практика","note":"Твоя вибіркова","startAt":"2026-12-22T09:35:00","endAt":"2026-12-22T10:55:00"},{"date":"2026-12-22","displayDate":"22.12.2026","day":"Вівторок","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-12-22T11:10:00","endAt":"2026-12-22T12:30:00"},{"date":"2026-12-22","displayDate":"22.12.2026","day":"Вівторок","week":"Чисельник","pair":6,"time":"15:55–17:15","start":"15:55","end":"17:15","subject":"Блокчейн-економіка: основи криптовалютного трейдингу","type":"Практика","note":"Твоя вибіркова","startAt":"2026-12-22T15:55:00","endAt":"2026-12-22T17:15:00"},{"date":"2026-12-23","displayDate":"23.12.2026","day":"Середа","week":"Чисельник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Фізичне виховання та здоровий спосіб життя","type":"Заняття","note":"","startAt":"2026-12-23T08:00:00","endAt":"2026-12-23T09:25:00"},{"date":"2026-12-23","displayDate":"23.12.2026","day":"Середа","week":"Чисельник","pair":2,"time":"09:35–10:55","start":"09:35","end":"10:55","subject":"Нормативно-правове регулювання професійної діяльності","type":"Лекція","note":"","startAt":"2026-12-23T09:35:00","endAt":"2026-12-23T10:55:00"},{"date":"2026-12-23","displayDate":"23.12.2026","day":"Середа","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Інноваційно-інвестиційний менеджмент в підприємництві","type":"Лекція","note":"","startAt":"2026-12-23T11:10:00","endAt":"2026-12-23T12:30:00"},{"date":"2026-12-24","displayDate":"24.12.2026","day":"Четвер","week":"Чисельник","pair":4,"time":"12:45–14:05","start":"12:45","end":"14:05","subject":"Тренінг-курс «Формула успіху підприємця»","type":"Лекція","note":"Твоя вибіркова","startAt":"2026-12-24T12:45:00","endAt":"2026-12-24T14:05:00"},{"date":"2026-12-25","displayDate":"25.12.2026","day":"П’ятниця","week":"Чисельник","pair":1,"time":"08:00–09:25","start":"08:00","end":"09:25","subject":"Іноземна мова (англійська)","type":"Практика","note":"","startAt":"2026-12-25T08:00:00","endAt":"2026-12-25T09:25:00"},{"date":"2026-12-25","displayDate":"25.12.2026","day":"П’ятниця","week":"Чисельник","pair":3,"time":"11:10–12:30","start":"11:10","end":"12:30","subject":"Основи національного спротиву / Цивільний захист та основи медичних знань","type":"Заняття","note":"З 02.10.2026","startAt":"2026-12-25T11:10:00","endAt":"2026-12-25T12:30:00"}]};
+    const events = schedule.events.map((event) => ({
+      ...event,
+      dateObj: new Date(event.date + "T00:00:00"),
+      startObj: new Date(event.startAt),
+      endObj: new Date(event.endAt)
+    }));
+
+    const byDate = new Map();
+    for (const event of events) {
+      if (!byDate.has(event.date)) byDate.set(event.date, []);
+      byDate.get(event.date).push(event);
+    }
+
+    const monthNames = ["січень","лютий","березень","квітень","травень","червень","липень","серпень","вересень","жовтень","листопад","грудень"];
+    const dayNames = ["Неділя","Понеділок","Вівторок","Середа","Четвер","П’ятниця","Субота"];
+    const startDate = new Date(schedule.meta.start + "T00:00:00");
+    const endDate = new Date(schedule.meta.end + "T00:00:00");
+    const now = new Date();
+    const firstUpcoming = events.find((event) => event.endObj >= now) || events[0];
+
+    let currentMonth = new Date((firstUpcoming || events[0]).date + "T00:00:00");
+    let selectedDate = (firstUpcoming || events[0]).date;
+    let activeWeek = "all";
+    let activeTypes = new Set(schedule.meta.types);
+    let query = "";
+
+    const calendarGrid = document.getElementById("calendarGrid");
+    const monthTitle = document.getElementById("monthTitle");
+    const panelDate = document.getElementById("panelDate");
+    const panelMeta = document.getElementById("panelMeta");
+    const dayRange = document.getElementById("dayRange");
+    const lessonList = document.getElementById("lessonList");
+    const agendaList = document.getElementById("agendaList");
+    const searchInput = document.getElementById("searchInput");
+    const typeFilters = document.getElementById("typeFilters");
+    const detailsBackdrop = document.getElementById("detailsBackdrop");
+    const closePanel = document.getElementById("closePanel");
+    const mobileDetailsQuery = window.matchMedia("(max-width: 759px)");
+
+    function isoDate(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function displayDate(iso) {
+      const date = new Date(iso + "T00:00:00");
+      return `${date.getDate()} ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+    }
+
+    function eventMatches(event) {
+      const haystack = `${event.subject} ${event.type} ${event.note} ${event.week}`.toLowerCase();
+      return (activeWeek === "all" || event.week === activeWeek)
+        && activeTypes.has(event.type)
+        && (!query || haystack.includes(query));
+    }
+
+    function eventsForDate(iso, filtered = true) {
+      const dayEvents = byDate.get(iso) || [];
+      return filtered ? dayEvents.filter(eventMatches) : dayEvents;
+    }
+
+    function dayInfo(iso) {
+      const all = eventsForDate(iso, false);
+      return all[0] || null;
+    }
+
+    function typeClass(type) {
+      if (type === "Лекція") return "lecture";
+      if (type === "Практика") return "practice";
+      return "";
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function openDetailsModal() {
+      if (mobileDetailsQuery.matches) {
+        document.body.classList.add("modal-open");
+      }
+    }
+
+    function closeDetailsModal() {
+      document.body.classList.remove("modal-open");
+    }
+
+    function renderTypeFilters() {
+      typeFilters.innerHTML = "";
+      for (const type of schedule.meta.types) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "chip active";
+        button.textContent = type;
+        button.dataset.type = type;
+        button.addEventListener("click", () => {
+          if (activeTypes.has(type) && activeTypes.size > 1) {
+            activeTypes.delete(type);
+            button.classList.remove("active");
+          } else {
+            activeTypes.add(type);
+            button.classList.add("active");
+          }
+          render();
+        });
+        typeFilters.appendChild(button);
+      }
+    }
+
+    function renderCalendar() {
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+      monthTitle.textContent = `${monthNames[month]} ${year}`;
+      calendarGrid.innerHTML = "";
+
+      const firstOfMonth = new Date(year, month, 1);
+      const mondayOffset = (firstOfMonth.getDay() + 6) % 7;
+      const gridStart = new Date(year, month, 1 - mondayOffset);
+
+      for (let index = 0; index < 42; index++) {
+        const date = new Date(gridStart);
+        date.setDate(gridStart.getDate() + index);
+        const iso = isoDate(date);
+        const filteredEvents = eventsForDate(iso);
+        const info = dayInfo(iso);
+
+        const cell = document.createElement("button");
+        cell.type = "button";
+        cell.className = "day-cell";
+        if (date.getMonth() !== month) cell.classList.add("outside");
+        if (iso === selectedDate) cell.classList.add("selected");
+        if (iso === isoDate(new Date())) cell.classList.add("today");
+        cell.addEventListener("click", () => {
+          selectedDate = iso;
+          render();
+          openDetailsModal();
+        });
+
+        const head = document.createElement("div");
+        head.className = "day-head";
+        head.innerHTML = `<span class="date-num">${date.getDate()}</span>${info ? `<span class="week-pill">${info.week}</span>` : ""}`;
+        cell.appendChild(head);
+
+        for (const event of filteredEvents.slice(0, 3)) {
+          const mini = document.createElement("div");
+          mini.className = `event-mini ${event.type}`;
+          mini.innerHTML = `<span class="mini-time">${event.start}-${event.end}</span><span class="mini-title">${escapeHtml(event.subject)}</span>`;
+          cell.appendChild(mini);
+        }
+
+        if (filteredEvents.length > 3) {
+          const more = document.createElement("div");
+          more.className = "more";
+          more.textContent = `+${filteredEvents.length - 3} ще`;
+          cell.appendChild(more);
+        }
+
+        calendarGrid.appendChild(cell);
+      }
+    }
+
+    function renderPanel() {
+      const events = eventsForDate(selectedDate);
+      const info = dayInfo(selectedDate);
+      const date = new Date(selectedDate + "T00:00:00");
+      panelDate.textContent = `${dayNames[date.getDay()]}, ${displayDate(selectedDate)}`;
+      panelMeta.textContent = info ? `${info.week} • ${events.length} пар` : "Немає занять у таблиці";
+
+      if (events.length) {
+        dayRange.innerHTML = `
+          <div class="range-box"><span>Початок</span><strong>${events[0].start}</strong></div>
+          <div class="range-box"><span>Кінець</span><strong>${events[events.length - 1].end}</strong></div>
+        `;
+        lessonList.innerHTML = events.map((event) => `
+          <article class="lesson">
+            <div class="lesson-top">
+              <span class="pair">${event.pair}</span>
+              <span class="time">${event.start}-${event.end}</span>
+            </div>
+            <h3 class="lesson-title">${escapeHtml(event.subject)}</h3>
+            <div class="lesson-tags">
+              <span class="tag ${typeClass(event.type)}">${escapeHtml(event.type)}</span>
+              <span class="tag">${escapeHtml(event.week)}</span>
+              ${event.note ? `<span class="tag note">${escapeHtml(event.note)}</span>` : ""}
+            </div>
+          </article>
+        `).join("");
+      } else {
+        dayRange.innerHTML = "";
+        lessonList.innerHTML = `<div class="empty-state">На цей день за вибраними фільтрами пар немає.</div>`;
+      }
+    }
+
+    function renderAgenda() {
+      const dates = [...byDate.keys()].sort();
+      const visibleDays = dates.map((iso) => [iso, eventsForDate(iso)]).filter(([, events]) => events.length);
+      agendaList.innerHTML = visibleDays.map(([iso, events]) => {
+        const info = dayInfo(iso);
+        return `
+          <article class="agenda-day">
+            <div class="agenda-date">
+              <strong>${displayDate(iso)}</strong>
+              <span>${escapeHtml(info.day)} • ${escapeHtml(info.week)}</span>
+            </div>
+            <div class="agenda-events">
+              ${events.map((event) => `
+                <button class="agenda-card" type="button" data-date="${iso}">
+                  <span class="time">${event.start}-${event.end}</span>
+                  <strong>${escapeHtml(event.subject)}</strong>
+                  <span class="tag ${typeClass(event.type)}">${escapeHtml(event.type)}</span>
+                </button>
+              `).join("")}
+            </div>
+          </article>
+        `;
+      }).join("") || `<div class="empty-state">За цими фільтрами нічого не знайдено.</div>`;
+
+      for (const card of agendaList.querySelectorAll(".agenda-card")) {
+        card.addEventListener("click", () => {
+          selectedDate = card.dataset.date;
+          currentMonth = new Date(selectedDate + "T00:00:00");
+          render();
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+      }
+    }
+
+    function render() {
+      renderCalendar();
+      renderPanel();
+      renderAgenda();
+    }
+
+    document.getElementById("prevMonth").addEventListener("click", () => {
+      currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
+      render();
+    });
+
+    document.getElementById("nextMonth").addEventListener("click", () => {
+      currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+      render();
+    });
+
+    document.getElementById("nextLessonBtn").addEventListener("click", () => {
+      const next = events.find((event) => event.endObj >= new Date()) || events[0];
+      selectedDate = next.date;
+      currentMonth = new Date(next.date + "T00:00:00");
+      render();
+      openDetailsModal();
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      activeWeek = "all";
+      activeTypes = new Set(schedule.meta.types);
+      query = "";
+      searchInput.value = "";
+      document.querySelectorAll("[data-week]").forEach((button) => button.classList.toggle("active", button.dataset.week === "all"));
+      document.querySelectorAll("[data-type]").forEach((button) => button.classList.add("active"));
+      selectedDate = (firstUpcoming || events[0]).date;
+      currentMonth = new Date(selectedDate + "T00:00:00");
+      closeDetailsModal();
+      render();
+    });
+
+    closePanel.addEventListener("click", closeDetailsModal);
+    detailsBackdrop.addEventListener("click", closeDetailsModal);
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeDetailsModal();
+    });
+
+    mobileDetailsQuery.addEventListener("change", (event) => {
+      if (!event.matches) closeDetailsModal();
+    });
+
+    document.querySelectorAll("[data-week]").forEach((button) => {
+      button.addEventListener("click", () => {
+        activeWeek = button.dataset.week;
+        document.querySelectorAll("[data-week]").forEach((item) => item.classList.toggle("active", item === button));
+        render();
+      });
+    });
+
+    searchInput.addEventListener("input", () => {
+      query = searchInput.value.trim().toLowerCase();
+      render();
+    });
+
+    renderTypeFilters();
+    render();
+  </script>
+</body>
+</html>
