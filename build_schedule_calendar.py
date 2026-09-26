@@ -246,37 +246,10 @@ def build_html(data):
       line-height: 1.35;
     }}
 
-    .summary {{
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 6px;
-    }}
-
-    .stat {{
-      background: rgba(255,253,248,.9);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 8px 7px;
-    }}
-
-    .stat strong {{
-      display: block;
-      font-size: 17px;
-      line-height: 1;
-    }}
-
-    .stat span {{
-      display: block;
-      margin-top: 3px;
-      color: var(--muted);
-      font-size: 10px;
-      line-height: 1.15;
-    }}
-
     .toolbar {{
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 7px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
       align-items: center;
       margin-bottom: 8px;
       background: rgba(255,253,248,.92);
@@ -290,14 +263,12 @@ def build_html(data):
       backdrop-filter: blur(14px);
     }}
 
-    .nav-group, .view-group {{
+    .nav-group {{
       display: inline-flex;
       gap: 5px;
       align-items: center;
-    }}
-
-    .nav-group {{
       justify-content: space-between;
+      width: 100%;
     }}
 
     .icon-btn, .text-btn, .chip {{
@@ -325,55 +296,11 @@ def build_html(data):
       border-color: rgba(37,107,93,.45);
     }}
 
-    .text-btn.primary {{
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
-      font-weight: 800;
-      grid-column: 2;
-      grid-row: 1;
-    }}
-
-    .view-group .text-btn.active, .chip.active {{
-      background: var(--accent-dark);
-      color: #fff;
-      border-color: var(--accent-dark);
-    }}
-
     .month-title {{
       min-width: 118px;
       text-align: center;
       font-size: 15px;
       font-weight: 900;
-    }}
-
-    .search {{
-      min-height: 34px;
-      width: 100%;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 0 10px;
-      background: var(--panel);
-      color: var(--ink);
-      grid-column: 1 / -1;
-    }}
-
-    .filters {{
-      display: flex;
-      flex-wrap: nowrap;
-      gap: 8px;
-      margin: 0 0 8px;
-      overflow-x: auto;
-      padding-bottom: 2px;
-    }}
-
-    .chip {{
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      min-height: 30px;
-      font-size: 12px;
-      white-space: nowrap;
     }}
 
     .layout {{
@@ -706,18 +633,11 @@ def build_html(data):
       body.modal-open {{ overflow: auto; }}
       .app {{ width: min(980px, calc(100% - 28px)); }}
       .topbar {{
-        grid-template-columns: 1fr 280px;
+        grid-template-columns: 1fr;
         align-items: end;
       }}
       .toolbar {{
-        grid-template-columns: auto auto minmax(210px, 1fr) auto auto;
-      }}
-      .search {{
-        grid-column: auto;
-      }}
-      .text-btn.primary {{
-        grid-column: auto;
-        grid-row: auto;
+        max-width: 620px;
       }}
       .layout {{
         grid-template-columns: minmax(0, 1fr) 300px;
@@ -754,11 +674,6 @@ def build_html(data):
         <h1>Календар пар</h1>
         <p class="subtitle">Семестр {html.escape(data['meta']['semester'])}</p>
       </div>
-      <section class="summary" aria-label="Підсумок розкладу">
-        <div class="stat"><strong>{data['meta']['totalStudyDays']}</strong><span>днів</span></div>
-        <div class="stat"><strong>{data['meta']['totalEvents']}</strong><span>пар</span></div>
-        <div class="stat"><strong>6</strong><span>слотів</span></div>
-      </section>
     </header>
 
     <section class="toolbar" aria-label="Керування календарем">
@@ -767,17 +682,7 @@ def build_html(data):
         <div class="month-title" id="monthTitle"></div>
         <button class="icon-btn" id="nextMonth" type="button" title="Наступний місяць" aria-label="Наступний місяць">›</button>
       </div>
-      <button class="text-btn primary" id="nextLessonBtn" type="button">Найближча пара</button>
-      <input class="search" id="searchInput" type="search" placeholder="Пошук за предметом, видом або приміткою">
-      <div class="view-group" aria-label="Фільтр тижня">
-        <button class="text-btn active" type="button" data-week="all">Усі</button>
-        <button class="text-btn" type="button" data-week="Чисельник">Чис.</button>
-        <button class="text-btn" type="button" data-week="Знаменник">Знам.</button>
-      </div>
-      <button class="text-btn" id="resetBtn" type="button">Скинути</button>
     </section>
-
-    <section class="filters" id="typeFilters" aria-label="Фільтр типу заняття"></section>
 
     <section class="layout">
       <section class="calendar-shell" aria-label="Місячний календар">
@@ -835,9 +740,6 @@ def build_html(data):
 
     let currentMonth = new Date((firstUpcoming || events[0]).date + "T00:00:00");
     let selectedDate = (firstUpcoming || events[0]).date;
-    let activeWeek = "all";
-    let activeTypes = new Set(schedule.meta.types);
-    let query = "";
 
     const calendarGrid = document.getElementById("calendarGrid");
     const monthTitle = document.getElementById("monthTitle");
@@ -846,8 +748,6 @@ def build_html(data):
     const dayRange = document.getElementById("dayRange");
     const lessonList = document.getElementById("lessonList");
     const agendaList = document.getElementById("agendaList");
-    const searchInput = document.getElementById("searchInput");
-    const typeFilters = document.getElementById("typeFilters");
     const detailsBackdrop = document.getElementById("detailsBackdrop");
     const closePanel = document.getElementById("closePanel");
     const mobileDetailsQuery = window.matchMedia("(max-width: 759px)");
@@ -864,20 +764,12 @@ def build_html(data):
       return `${{date.getDate()}} ${{monthNames[date.getMonth()]}} ${{date.getFullYear()}}`;
     }}
 
-    function eventMatches(event) {{
-      const haystack = `${{event.subject}} ${{event.type}} ${{event.note}} ${{event.week}}`.toLowerCase();
-      return (activeWeek === "all" || event.week === activeWeek)
-        && activeTypes.has(event.type)
-        && (!query || haystack.includes(query));
-    }}
-
-    function eventsForDate(iso, filtered = true) {{
-      const dayEvents = byDate.get(iso) || [];
-      return filtered ? dayEvents.filter(eventMatches) : dayEvents;
+    function eventsForDate(iso) {{
+      return byDate.get(iso) || [];
     }}
 
     function dayInfo(iso) {{
-      const all = eventsForDate(iso, false);
+      const all = eventsForDate(iso);
       return all[0] || null;
     }}
 
@@ -904,28 +796,6 @@ def build_html(data):
 
     function closeDetailsModal() {{
       document.body.classList.remove("modal-open");
-    }}
-
-    function renderTypeFilters() {{
-      typeFilters.innerHTML = "";
-      for (const type of schedule.meta.types) {{
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "chip active";
-        button.textContent = type;
-        button.dataset.type = type;
-        button.addEventListener("click", () => {{
-          if (activeTypes.has(type) && activeTypes.size > 1) {{
-            activeTypes.delete(type);
-            button.classList.remove("active");
-          }} else {{
-            activeTypes.add(type);
-            button.classList.add("active");
-          }}
-          render();
-        }});
-        typeFilters.appendChild(button);
-      }}
     }}
 
     function renderCalendar() {{
@@ -1062,27 +932,6 @@ def build_html(data):
       render();
     }});
 
-    document.getElementById("nextLessonBtn").addEventListener("click", () => {{
-      const next = events.find((event) => event.endObj >= new Date()) || events[0];
-      selectedDate = next.date;
-      currentMonth = new Date(next.date + "T00:00:00");
-      render();
-      openDetailsModal();
-    }});
-
-    document.getElementById("resetBtn").addEventListener("click", () => {{
-      activeWeek = "all";
-      activeTypes = new Set(schedule.meta.types);
-      query = "";
-      searchInput.value = "";
-      document.querySelectorAll("[data-week]").forEach((button) => button.classList.toggle("active", button.dataset.week === "all"));
-      document.querySelectorAll("[data-type]").forEach((button) => button.classList.add("active"));
-      selectedDate = (firstUpcoming || events[0]).date;
-      currentMonth = new Date(selectedDate + "T00:00:00");
-      closeDetailsModal();
-      render();
-    }});
-
     closePanel.addEventListener("click", closeDetailsModal);
     detailsBackdrop.addEventListener("click", closeDetailsModal);
 
@@ -1094,20 +943,6 @@ def build_html(data):
       if (!event.matches) closeDetailsModal();
     }});
 
-    document.querySelectorAll("[data-week]").forEach((button) => {{
-      button.addEventListener("click", () => {{
-        activeWeek = button.dataset.week;
-        document.querySelectorAll("[data-week]").forEach((item) => item.classList.toggle("active", item === button));
-        render();
-      }});
-    }});
-
-    searchInput.addEventListener("input", () => {{
-      query = searchInput.value.trim().toLowerCase();
-      render();
-    }});
-
-    renderTypeFilters();
     render();
   </script>
 </body>
