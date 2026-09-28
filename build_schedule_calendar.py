@@ -99,12 +99,59 @@ def event_datetime(day, clock):
 def build_data(sheets):
     rows = sheets["По датах"]
     header = rows[0]
-    items = []
-    for raw in rows[1:]:
-        row = {header[i]: raw[i] if i < len(raw) else "" for i in range(len(header))}
+    raw_rows = [
+        {header[i]: raw[i] if i < len(raw) else "" for i in range(len(header))}
+        for raw in rows[1:]
+    ]
+    semester_start = min(parse_date(row["Дата"]) for row in raw_rows if row.get("Дата"))
+
+    def corrected_week(day):
+        week_index = (day - semester_start).days // 7
+        return "Знаменник" if week_index % 2 == 0 else "Чисельник"
+
+    templates = {}
+    one_off_rows = []
+    for row in raw_rows:
         subject = row.get("Дисципліна", "").strip()
         if not subject or subject == "Немає пари":
             continue
+
+        note = row.get("Примітка", "").strip()
+        if note.startswith("Разове заняття"):
+            one_off_rows.append(row)
+            continue
+
+        key = (row["День"], row["Тиждень"])
+        templates.setdefault(key, {})
+        templates[key].setdefault(int(row["Пара"]), row)
+
+    dates = sorted({parse_date(row["Дата"]) for row in raw_rows if row.get("Дата")})
+    items = []
+    for day in dates:
+        source = next(row for row in raw_rows if parse_date(row["Дата"]) == day)
+        week = corrected_week(day)
+        day_template = templates.get((source["День"], week), {})
+        for row in sorted(day_template.values(), key=lambda value: int(value["Пара"])):
+            start, end = split_time(row["Час"])
+            items.append(
+                {
+                    "date": day.isoformat(),
+                    "displayDate": day.strftime("%d.%m.%Y"),
+                    "day": source["День"],
+                    "week": week,
+                    "pair": int(row["Пара"]),
+                    "time": row["Час"],
+                    "start": start,
+                    "end": end,
+                    "subject": row["Дисципліна"].strip(),
+                    "type": row.get("Вид", "").strip() or "Заняття",
+                    "note": row.get("Примітка", "").strip(),
+                    "startAt": event_datetime(day, start).isoformat(),
+                    "endAt": event_datetime(day, end).isoformat(),
+                }
+            )
+
+    for row in one_off_rows:
         day = parse_date(row["Дата"])
         start, end = split_time(row["Час"])
         items.append(
@@ -112,12 +159,12 @@ def build_data(sheets):
                 "date": day.isoformat(),
                 "displayDate": row["Дата"],
                 "day": row["День"],
-                "week": row["Тиждень"],
+                "week": corrected_week(day),
                 "pair": int(row["Пара"]),
                 "time": row["Час"],
                 "start": start,
                 "end": end,
-                "subject": subject,
+                "subject": row["Дисципліна"].strip(),
                 "type": row.get("Вид", "").strip() or "Заняття",
                 "note": row.get("Примітка", "").strip(),
                 "startAt": event_datetime(day, start).isoformat(),
